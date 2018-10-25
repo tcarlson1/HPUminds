@@ -9,13 +9,26 @@
 using namespace std;
 using namespace cv;
 
+//prototypes
+void on_low_hue(int, void *);
+void on_high_hue(int, void *);
+void on_blur_size(int, void *);
+void on_canny_thresh(int, void *);
+void on_canny_ratio(int, void *);
+
+//globals
+int low_Hue = 46;
+int high_Hue = 94;
+int blur_size = 9;
+int canny_thresh = 80;
+int canny_ratio = 2;
+RNG rng(12345);
+
+
 int main(int argc, char const *argv[])
 {
 	VideoCapture cap;
     Mat frame, maskedFrame, tempProcessingImg, tempMask1, tempMask2;
-    int blur_size = 9;
-    int low_Hue;
-    int high_Hue;
     if (argc < 2) {
     	cerr << "please specify file to process\n";
     }
@@ -29,62 +42,113 @@ int main(int argc, char const *argv[])
     }
 
     namedWindow("Video Capture", WINDOW_NORMAL);
-    createTrackbar("Low R","Object Detection", &low_Hue, 255, );
+    namedWindow("maskedFrame", WINDOW_NORMAL);
+    createTrackbar("Low Hue","maskedFrame", &low_Hue, 255, on_low_hue);
+    createTrackbar("High Hue","maskedFrame", &high_Hue, 255, on_low_hue);
+    createTrackbar("Blur","maskedFrame", &blur_size, 255, on_blur_size);
+    createTrackbar("canny thresh","maskedFrame", &canny_thresh, 255, on_canny_thresh);
+    createTrackbar("canny ratio","maskedFrame", &canny_ratio, 5, on_canny_ratio);
 
     //loop through video file
+    int frame_counter = 0;
     while((char)waitKey(1)!='q'){
         cap >> frame;
 
+        frame_counter++;
         //break if at the end of the video file
-        if(frame.empty())
-            break;
+        if(frame_counter == cap.get(CV_CAP_PROP_FRAME_COUNT)) {
+            cout << "restarting video\n";
+            frame_counter = 0;
+            cap.set(CV_CAP_PROP_POS_FRAMES, 0);
+        }
 
         //rotate the image
         transpose(frame, frame);
         flip(frame, frame, 1);
-        resize(frame, frame, Size(225,400));
+        resize(frame, frame, Size(150,200));
 
 
         // ** mask out the path **
         //convert to hsv
         cvtColor(frame, tempProcessingImg, COLOR_RGB2HSV);
-        //medianBlur(tempProcessingImg, tempProcessingImg, (blur_size * 2) + 1);
+        medianBlur(tempProcessingImg, tempProcessingImg, (blur_size * 2) + 1);
 
         //mask red hue
-        inRange(tempProcessingImg, Scalar(0, 0, 0), Scalar(20, 255, 255), tempMask1);
-        inRange(tempProcessingImg, Scalar(159, 0, 0), Scalar(179, 255, 255), tempMask2);
+        inRange(tempProcessingImg, Scalar(0, 0, 0), Scalar(low_Hue, 255, 200), tempMask1);
+        inRange(tempProcessingImg, Scalar(high_Hue, 0, 0), Scalar(255, 255, 200), tempMask2);
         bitwise_or(tempMask1, tempMask2, maskedFrame);
 
         //convert back to RGB before displaying
         //cvtColor(tempProcessingImg, maskedFrame, COLOR_HSV2RGB);
+        //find contours and display
+        Mat canny_output, canny_output_bwSRC, bwsrc;
+        vector<vector<Point> > contours;
+        vector<Vec4i> hierarchy;
 
+        Canny(maskedFrame, canny_output, canny_thresh, canny_thresh * canny_ratio, 3 );
+        Mat hsv_channels[3];
+        cv::split(tempProcessingImg, hsv_channels );
+        Canny(hsv_channels[2], canny_output_bwSRC, canny_thresh, canny_thresh * canny_ratio, 3 );
+        findContours( canny_output_bwSRC, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) );
         // ** display source and result **
         //show source image
         imshow("Video Capture",frame);
         //show masked image
-        imshow("masked", maskedFrame);
+        imshow("maskedFrame", maskedFrame);
         imshow("tempMask1", tempMask1);
         imshow("tempMask2", tempMask2);
+        imshow("canny", canny_output);
+
+        imshow("canny 2", canny_output_bwSRC);
+
+        /// Draw contours
+        Mat drawing = Mat::zeros( canny_output.size(), CV_8UC3 );
+        for( int i = 0; i< contours.size(); i++ )
+         {
+           Scalar color = Scalar( rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
+           drawContours( drawing, contours, i, color, 2, 8, hierarchy, 0, Point() );
+         }
+
+        /// Show in a window
+        namedWindow( "Contours", CV_WINDOW_NORMAL );
+        imshow( "Contours", drawing );
     }
 	return 0;
 }
 
 void on_low_hue(int, void *)
 {
-    low_Hue = min(high_r-1, low_r);
-    setTrackbarPos("Low R","Object Detection", low_Hue);
+    //low_Hue = min(high_Hue-1, low_Hue);
+    setTrackbarPos("Low Hue","maskedFrame", low_Hue);
 
     //inRange(frame, Scalar(low_b,low_g,low_r), Scalar(high_b,high_g,high_r),frame_threshold);
     //imshow("Object Detection", frame_threshold);
-
 }
 
 void on_high_hue(int, void *)
 {
-    high_Hue = min(high_r-1, low_r);
-    setTrackbarPos("Low R","Object Detection", low_Hue);
+    //high_Hue = min(high_Hue-1, low_Hue);
+    setTrackbarPos("High Hue","maskedFrame", high_Hue);
 
     //inRange(frame, Scalar(low_b,low_g,low_r), Scalar(high_b,high_g,high_r),frame_threshold);
     //imshow("Object Detection", frame_threshold);
+}
 
+void on_blur_size(int, void *)
+{
+    //high_Hue = min(high_Hue-1, low_Hue);
+    setTrackbarPos("Blur","maskedFrame", blur_size);
+
+    //inRange(frame, Scalar(low_b,low_g,low_r), Scalar(high_b,high_g,high_r),frame_threshold);
+    //imshow("Object Detection", frame_threshold);
+}
+
+void on_canny_thresh(int, void *)
+{
+    setTrackbarPos("canny thresh","maskedFrame", canny_thresh);   
+}
+
+void on_canny_ratio(int, void *)
+{
+    setTrackbarPos("canny ratio","maskedFrame", canny_ratio);   
 }
