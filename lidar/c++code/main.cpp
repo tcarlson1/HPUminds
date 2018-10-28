@@ -9,8 +9,8 @@
 
 void processData(const sweep::sample& sample);
 
-static int startingAngle = 0;
-static int endingAngle = 180000;
+static int startingAngle = 0; //000000 to 360000 degrees
+static int endingAngle = 180000; //000000 to 360000 degrees
 static int warningDistance = 15; // cm
 static int minSignalQuality = 50;
 
@@ -31,6 +31,7 @@ int main(int argc, char* argv[]) try {
 	device.start_scanning();
 
 	std::cout << "BEGIN SCAN" << std::endl;
+	//100 scans
 	for (auto n = 0; n < 100; ++n) {
 	//while(1) {
 
