@@ -1,18 +1,28 @@
 /*
-10/24/18
+HPUminds Lidar Sensor Code
+
+Initial Author: Ryan Diaz
+
+Initial Date: October 2018
+Last Updated: October 2018
+
+C++ code for scanse sweep
 
 */
 #include <cstdlib>
 #include <iostream>
 
 #include <sweep/sweep.hpp>
-
-void processData(const sweep::sample& sample);
+#include <curl/curl.h>
 
 static int startingAngle = 0; //000000 to 360000 degrees
 static int endingAngle = 180000; //000000 to 360000 degrees
-static int warningDistance = 15; // cm
-static int minSignalQuality = 50;
+static int warningDistance = 900; // cm
+static int minSignalQuality = 10;
+
+bool debugOutput = false;
+
+void processData(const sweep::sample& sample);
 
 int main(int argc, char* argv[]) try {
 
@@ -55,18 +65,19 @@ int main(int argc, char* argv[]) try {
 
 //processes the data for each data point
 void processData(const sweep::sample& sample){
-
+	/*
 	// verify if it is the angle that we care about
 	if(sample.angle >= startingAngle && sample.angle <= endingAngle){
 		// check the distance
 		if(sample.distance <= warningDistance){
 			// check signal strength
 			if(sample.signal_strength >= minSignalQuality){
-
-				std::cout << "distance: " << sample.distance << " angle: " << sample.angle << " strength: " << sample.signal_strength << "\n";
+				cout << "X" << endl;
+				if(debugOutput)
+					std::cout << "distance: " << sample.distance << " angle: " << sample.angle << " strength: " << sample.signal_strength << "\n";
 			}
 		}
 	}
-
-	//std::cout << "distance: " << sample.distance << " angle: " << sample.angle << " strength: " << sample.signal_strength << "\n";
+	*/
+	std::cout << "distance: " << sample.distance << " angle: " << sample.angle << " strength: " << sample.signal_strength << "\n";
 }
