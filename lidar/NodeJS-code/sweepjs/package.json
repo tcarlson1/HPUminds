@@ -1,0 +1,19 @@
+{
+  "name": "sweepjs",
+  "version": "1.3.0",
+  "description": "Native module for the Sweep LiDAR",
+  "keywords": [
+    "addon",
+    "native",
+    "module"
+  ],
+  "author": "Daniel J. Hofmann",
+  "license": "MIT",
+  "main": "./build/Release/sweepjs",
+  "scripts": {
+    "test": "node index /dev/ttyUSB0"
+  },
+  "dependencies": {
+    "nan": "^2.2"
+  }
+}
