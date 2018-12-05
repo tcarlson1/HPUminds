@@ -1,0 +1,15 @@
+{
+  "name": "sweepjsd",
+  "version": "0.0.1",
+  "description": "Scanse Sweep Websocket Example",
+  "author": "Daniel J. Hofmann",
+  "license": "MIT",
+  "scripts": {
+    "start": "node sweepjsd"
+  },
+  "dependencies": {
+    "koa": "^1.2",
+    "koa-static": "^2.0",
+    "ws": "^1.1"
+  }
+}
