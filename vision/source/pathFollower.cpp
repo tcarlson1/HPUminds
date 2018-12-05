@@ -5,6 +5,9 @@
 #include "opencv2/imgproc.hpp"
 #include "opencv2/highgui.hpp"
 #include "opencv/cv.hpp"
+#include "../Dependencies/jsoncpp-master/dist/json/json.h"
+#include "../Dependencies/jsoncpp-master/dist/json/json-forwards.h"
+#include "../Dependencies/jsoncpp-master/dist/jsoncpp.cpp"
 
 using namespace std;
 using namespace cv;
@@ -23,14 +26,17 @@ int blur_size = 9;
 int canny_thresh = 80;
 int canny_ratio = 2;
 RNG rng(12345);
-
+const int center = 40;
+const int padding = 12;
 
 int main(int argc, char const *argv[])
 {
-	VideoCapture cap;
+    cout << CV_MAJOR_VERSION << "." <<CV_MINOR_VERSION;
+
+    VideoCapture cap;
     Mat frame, maskedFrame, tempProcessingImg, tempMask1, tempMask2;
     if (argc < 2) {
-    	cerr << "please specify file to process\n";
+        cerr << "please specify file to process\n";
     }
 
     const string source = argv[1];
@@ -65,54 +71,112 @@ int main(int argc, char const *argv[])
         //rotate the image
         transpose(frame, frame);
         flip(frame, frame, 1);
-        resize(frame, frame, Size(150,200));
+        medianBlur(frame, frame, (blur_size * 2) + 1);
+        resize(frame, frame, Size(80,160));
 
 
         // ** mask out the path **
         //convert to hsv
         cvtColor(frame, tempProcessingImg, COLOR_RGB2HSV);
-        medianBlur(tempProcessingImg, tempProcessingImg, (blur_size * 2) + 1);
+        //medianBlur(tempProcessingImg, tempProcessingImg, (blur_size * 2) + 1);
 
         //mask red hue
         inRange(tempProcessingImg, Scalar(0, 0, 0), Scalar(low_Hue, 255, 200), tempMask1);
         inRange(tempProcessingImg, Scalar(high_Hue, 0, 0), Scalar(255, 255, 200), tempMask2);
         bitwise_or(tempMask1, tempMask2, maskedFrame);
 
+        //array of middle of white points
+        int middles[maskedFrame.rows];
+        for(int i = 0; i < maskedFrame.rows; i++)
+        {
+            int numWhite = 1;
+            int avgPos = 0;
+            const uchar* Mi = maskedFrame.ptr<uchar>(i);
+            for(int j = 0; j < maskedFrame.cols; j++){
+                if(Mi[j] > 0){
+                    numWhite++;
+                    avgPos += j;
+                }
+            }
+            middles[i] = (int)avgPos/numWhite;
+        }
+
+        //iterate through array of middle white pixel locations
+        int avgMiddle;   
+        for (int i = 0; i < maskedFrame.rows; ++i)
+        {
+            avgMiddle += middles[i];
+            //cout <<"row [" << i << "] = " << middles[i] << endl ;
+        }
+        avgMiddle /= maskedFrame.rows;
+
+
+        cout << "avgMiddle = " << avgMiddle<< endl;
+
+        if(avgMiddle > center + padding) {
+            cout << "move left\n";
+        } else if(avgMiddle < center - padding) {
+            cout << "move right\n";
+        } else {
+            cout << "going straight enough\n";
+        }
+
+        /*
+        Mat middlesLine(maskedFrame.rows, maskedFrame.cols, CV_8U, 0);
+        for(int i = 0; i < middlesLine.rows; i++) {
+            uchar* Mi = middlesLine.ptr<uchar>(i);
+            for (int j = 0; j < middlesLine.cols; ++j)
+            {
+                if(Mi[j] == middles[i]) {
+                    Mi[j] = 1;
+                }
+            }
+        }
+        */
+        //middlesLine = np.zeros((maskedFrame.rows,maskedFrame.cols), np.uint8)
+
         //convert back to RGB before displaying
         //cvtColor(tempProcessingImg, maskedFrame, COLOR_HSV2RGB);
         //find contours and display
         Mat canny_output, canny_output_bwSRC, bwsrc;
-        vector<vector<Point> > contours;
+        vector<vector<Point>> contours;
         vector<Vec4i> hierarchy;
 
-        Canny(maskedFrame, canny_output, canny_thresh, canny_thresh * canny_ratio, 3 );
-        Mat hsv_channels[3];
-        cv::split(tempProcessingImg, hsv_channels );
-        Canny(hsv_channels[2], canny_output_bwSRC, canny_thresh, canny_thresh * canny_ratio, 3 );
-        findContours( canny_output_bwSRC, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) );
+        //Canny(maskedFrame, canny_output, canny_thresh, canny_thresh * canny_ratio, 3 );
+        //Mat hsv_channels[3];
+        //cv::split(tempProcessingImg, hsv_channels );
+        //equalizeHist( hsv_channels[2], bwsrc );
+        //Canny(bwsrc, canny_output_bwSRC, canny_thresh, canny_thresh * canny_ratio, 3 );
+        //findContours( canny_output_bwSRC, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) );
         // ** display source and result **
         //show source image
         imshow("Video Capture",frame);
         //show masked image
         imshow("maskedFrame", maskedFrame);
-        imshow("tempMask1", tempMask1);
-        imshow("tempMask2", tempMask2);
-        imshow("canny", canny_output);
+        //imshow("middleLine", middlesLine);
+        //imshow("tempMask1", tempMask1);
+        //imshow("tempMask2", tempMask2);
+        //imshow("canny", canny_output);
 
-        imshow("canny 2", canny_output_bwSRC);
+        //imshow("canny 2", canny_output_bwSRC);
 
         /// Draw contours
-        Mat drawing = Mat::zeros( canny_output.size(), CV_8UC3 );
+        /*Mat drawing = Mat::zeros( canny_output.size(), CV_8UC3 );
         for( int i = 0; i< contours.size(); i++ )
          {
            Scalar color = Scalar( rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
            drawContours( drawing, contours, i, color, 2, 8, hierarchy, 0, Point() );
-         }
+         }*/
 
         /// Show in a window
-        namedWindow( "Contours", CV_WINDOW_NORMAL );
-        imshow( "Contours", drawing );
+       // namedWindow( "Contours", CV_WINDOW_NORMAL );
+        //imshow( "Contours", drawing );
     }
+
+    //json testing stuff
+    Json::Value val;
+
+
 	return 0;
 }
 
