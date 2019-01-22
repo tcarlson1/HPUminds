@@ -15,18 +15,21 @@ using namespace cv;
 //prototypes
 void on_low_hue(int, void *);
 void on_high_hue(int, void *);
+void on_max_value(int, void *);
 void on_blur_size(int, void *);
 void on_canny_thresh(int, void *);
 void on_canny_ratio(int, void *);
 
 //globals
-int low_Hue = 46;
-int high_Hue = 94;
-int blur_size = 9;
+int low_Hue = 0;
+int high_Hue = 100;
+int max_value = 230;
+int blur_size = 3;
 int canny_thresh = 80;
 int canny_ratio = 2;
+
 RNG rng(12345);
-const int center = 40;
+const int center = 80;
 const int padding = 12;
 
 int main(int argc, char const *argv[])
@@ -51,13 +54,16 @@ int main(int argc, char const *argv[])
     namedWindow("maskedFrame", WINDOW_NORMAL);
     createTrackbar("Low Hue","maskedFrame", &low_Hue, 255, on_low_hue);
     createTrackbar("High Hue","maskedFrame", &high_Hue, 255, on_low_hue);
-    createTrackbar("Blur","maskedFrame", &blur_size, 255, on_blur_size);
-    createTrackbar("canny thresh","maskedFrame", &canny_thresh, 255, on_canny_thresh);
-    createTrackbar("canny ratio","maskedFrame", &canny_ratio, 5, on_canny_ratio);
+    createTrackbar("Max Value","maskedFrame", &max_value, 255, on_max_value);
+    createTrackbar("Blur","maskedFrame", &blur_size, 10, on_blur_size);
+    //createTrackbar("canny thresh","maskedFrame", &canny_thresh, 255, on_canny_thresh);
+    //createTrackbar("canny ratio","maskedFrame", &canny_ratio, 5, on_canny_ratio);
 
     //loop through video file
     int frame_counter = 0;
     while((char)waitKey(1)!='q'){
+        //string to send to brain
+        string Movement;
         cap >> frame;
 
         frame_counter++;
@@ -69,10 +75,10 @@ int main(int argc, char const *argv[])
         }
 
         //rotate the image
-        transpose(frame, frame);
-        flip(frame, frame, 1);
+        //transpose(frame, frame);
+        //flip(frame, frame, 1);
+        resize(frame, frame, Size(160,80));
         medianBlur(frame, frame, (blur_size * 2) + 1);
-        resize(frame, frame, Size(80,160));
 
 
         // ** mask out the path **
@@ -81,8 +87,8 @@ int main(int argc, char const *argv[])
         //medianBlur(tempProcessingImg, tempProcessingImg, (blur_size * 2) + 1);
 
         //mask red hue
-        inRange(tempProcessingImg, Scalar(0, 0, 0), Scalar(low_Hue, 255, 200), tempMask1);
-        inRange(tempProcessingImg, Scalar(high_Hue, 0, 0), Scalar(255, 255, 200), tempMask2);
+        inRange(tempProcessingImg, Scalar(0, 0, 0), Scalar(low_Hue, 255, max_value), tempMask1);
+        inRange(tempProcessingImg, Scalar(high_Hue, 0, 0), Scalar(255, 255, max_value), tempMask2);
         bitwise_or(tempMask1, tempMask2, maskedFrame);
 
         //array of middle of white points
@@ -114,10 +120,13 @@ int main(int argc, char const *argv[])
         cout << "avgMiddle = " << avgMiddle<< endl;
 
         if(avgMiddle > center + padding) {
-            cout << "move left\n";
-        } else if(avgMiddle < center - padding) {
+            Movement = "right";
             cout << "move right\n";
+        } else if(avgMiddle < center - padding) {
+            Movement = "left";
+            cout << "move left\n";
         } else {
+            Movement = "straight";
             cout << "going straight enough\n";
         }
 
@@ -171,10 +180,14 @@ int main(int argc, char const *argv[])
         /// Show in a window
        // namedWindow( "Contours", CV_WINDOW_NORMAL );
         //imshow( "Contours", drawing );
-    }
 
-    //json testing stuff
-    Json::Value val;
+        //json stuff
+        Json::Value root;
+        root["Movement"] = Movement;
+        cout << root << endl;
+    }
+    
+
 
 
 	return 0;
@@ -197,6 +210,12 @@ void on_high_hue(int, void *)
     //inRange(frame, Scalar(low_b,low_g,low_r), Scalar(high_b,high_g,high_r),frame_threshold);
     //imshow("Object Detection", frame_threshold);
 }
+
+void on_max_value(int, void *)
+{
+    setTrackbarPos("Max Value","maskedFrame", max_value);
+}
+
 
 void on_blur_size(int, void *)
 {
