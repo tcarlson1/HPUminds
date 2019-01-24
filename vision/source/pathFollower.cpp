@@ -8,6 +8,7 @@
 #include "../Dependencies/jsoncpp-master/dist/json/json.h"
 #include "../Dependencies/jsoncpp-master/dist/json/json-forwards.h"
 #include "../Dependencies/jsoncpp-master/dist/jsoncpp.cpp"
+#include "../Dependencies/easywsclient-master/easywsclient.cpp"
 
 using namespace std;
 using namespace cv;
@@ -29,8 +30,10 @@ int canny_thresh = 80;
 int canny_ratio = 2;
 
 RNG rng(12345);
-const int center = 80;
-const int padding = 12;
+const int width = 160;
+const int height = 80;
+const int center = width/2;
+const int padding = 8;
 
 int main(int argc, char const *argv[])
 {
@@ -77,7 +80,7 @@ int main(int argc, char const *argv[])
         //rotate the image
         //transpose(frame, frame);
         //flip(frame, frame, 1);
-        resize(frame, frame, Size(160,80));
+        resize(frame, frame, Size(width,height));
         medianBlur(frame, frame, (blur_size * 2) + 1);
 
 
@@ -129,6 +132,7 @@ int main(int argc, char const *argv[])
             Movement = "straight";
             cout << "going straight enough\n";
         }
+        cout << "percent distance from center " << abs((avgMiddle - center)/width);
 
         /*
         Mat middlesLine(maskedFrame.rows, maskedFrame.cols, CV_8U, 0);
@@ -185,6 +189,15 @@ int main(int argc, char const *argv[])
         Json::Value root;
         root["Movement"] = Movement;
         cout << root << endl;
+
+
+        //dummy websocket test
+        easywsclient::WebSocket::pointer socket = easywsclient::WebSocket::create_dummy();
+        assert(socket);
+
+        socket->send(Movement);
+
+        delete socket;
     }
     
 
